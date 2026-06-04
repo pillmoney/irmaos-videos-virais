@@ -234,7 +234,12 @@ export default function Estudio() {
             setHeygenStatus('failed');
             setPolling(false);
             setGenerating(false);
-            setErrorMsg('A geração do avatar falhou no HeyGen.');
+            
+            const failMsg = statusData?.data?.failure_message || 
+                            statusData?.failure_message || 
+                            statusData?.data?.error?.message || 
+                            'A geração do avatar falhou no HeyGen.';
+            setErrorMsg(`A geração falhou no HeyGen: ${failMsg}`);
             
             await db.renders.update(rndId, { status: 'falhou' });
             clearInterval(pollInterval);
