@@ -42,8 +42,14 @@ export default function Estudio() {
   const [heygenStatus, setHeygenStatus] = useState('');
   const [heygenProgress, setHeygenProgress] = useState(0);
   const [heygenVideoUrl, setHeygenVideoUrl] = useState('');
-  const [polling, setPolling] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [polling, setPolling] = useState(false);
+  const [originalVideoUrl, setOriginalVideoUrl] = useState('');
+  const [hyperframesLayout, setHyperframesLayout] = useState('split');
+  const [renderingHyperframes, setRenderingHyperframes] = useState(false);
+  const [hyperframesVideoUrl, setHyperframesVideoUrl] = useState('');
+  const [hyperframesStatus, setHyperframesStatus] = useState('');
+  const [hyperframesProgress, setHyperframesProgress] = useState(0);
 
   // Avatars list from HeyGen
   const [avatarsList, setAvatarsList] = useState<any[]>([]);
@@ -93,6 +99,11 @@ export default function Estudio() {
       const videos = await db.videos_fonte.list(projId);
       if (videos && videos.length > 0) {
         const vf = videos[0];
+        if (vf.transcricao_json?.processed_url) {
+          setOriginalVideoUrl(vf.transcricao_json.processed_url);
+        } else if (vf.url) {
+          setOriginalVideoUrl(vf.url);
+        }
         
         // Find approved/first cut
         const cuts = await db.trechos.list(vf.id);
@@ -123,9 +134,18 @@ export default function Estudio() {
                   startStatusPolling(vid, rnd.id);
                 }
               } else if (rnd.status === 'concluido' && rnd.video_url) {
-                setHeygenVideoUrl(rnd.video_url);
-                setHeygenStatus('success');
-                setHeygenProgress(100);
+                if (rnd.video_url.includes('final_reels')) {
+                  setHyperframesVideoUrl(rnd.video_url);
+                  setHyperframesStatus('success');
+                  setHyperframesProgress(100);
+                  setHeygenVideoUrl(rnd.video_url);
+                  setHeygenStatus('success');
+                  setHeygenProgress(100);
+                } else {
+                  setHeygenVideoUrl(rnd.video_url);
+                  setHeygenStatus('success');
+                  setHeygenProgress(100);
+                }
               }
             }
           }
@@ -270,6 +290,65 @@ export default function Estudio() {
     const pollInterval = setInterval(checkStatus, 10000);
   };
 
+  const handleRenderHyperframes = async () => {
+    if (!originalVideoUrl || !heygenVideoUrl || !roteiro || !render) return;
+    try {
+      setRenderingHyperframes(true);
+      setHyperframesStatus('Gerando Reels com HyperFrames...');
+      setHyperframesProgress(15);
+      setErrorMsg('');
+
+      // Simulate progress steps for rendering feedback
+      const progressInterval = setInterval(() => {
+        setHyperframesProgress(prev => {
+          if (prev < 90) return prev + 10;
+          return prev;
+        });
+      }, 4000);
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/hyperframes/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_video_url: originalVideoUrl,
+          avatar_video_url: heygenVideoUrl,
+          script_text: roteiro.falar,
+          duration: 15.0,
+          layout: hyperframesLayout
+        })
+      });
+
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao renderizar Reels no HyperFrames.');
+      }
+
+      const data = await res.json();
+      const finalVideoUrl = data.video_url;
+
+      setHyperframesVideoUrl(finalVideoUrl);
+      setHyperframesStatus('success');
+      setHyperframesProgress(100);
+
+      // Save in DB
+      const updated = await db.renders.update(render.id, {
+        video_url: finalVideoUrl,
+        status: 'concluido'
+      });
+      setRender(updated);
+
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Ocorreu um erro ao renderizar no HyperFrames.');
+      setHyperframesStatus('failed');
+    } finally {
+      setRenderingHyperframes(false);
+    }
+  };
+
   const handleSimulatePublish = async () => {
     if (!render || !project) return;
     try {
@@ -332,56 +411,106 @@ export default function Estudio() {
                 <Tv className="h-5 w-5 text-amber-500" /> Preview do Estúdio
               </h3>
 
-              {heygenVideoUrl ? (
+              {hyperframesVideoUrl ? (
                 <div className="space-y-4">
-                  {/* Blended composition preview */}
-                  <div className="relative aspect-[9/16] max-w-[320px] mx-auto overflow-hidden rounded-2xl border-2 border-amber-500/30 bg-black shadow-2xl">
-                    <div className="absolute inset-0 flex flex-col">
-                      {/* Top: Source video placeholder/cut simulation */}
-                      <div className="h-1/2 bg-zinc-950 border-b border-zinc-800 flex items-center justify-center overflow-hidden">
-                        <span className="text-xs text-zinc-600 font-bold uppercase tracking-wider">Corte do Vídeo Original</span>
-                      </div>
-                      
-                      {/* Bottom: HeyGen Avatar */}
-                      <div className="h-1/2 bg-zinc-900 overflow-hidden relative">
-                        <video 
-                          src={heygenVideoUrl} 
-                          controls 
-                          loop
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold text-emerald-400 border border-emerald-500/20">
-                          Avatar Sincronizado
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Captions Overlay simulation */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center px-4 pointer-events-none">
-                      <span className="bg-amber-500 text-zinc-950 px-2 py-1 rounded font-black text-xs uppercase shadow-lg tracking-wider border border-amber-400">
-                        {roteiro?.gancho ? roteiro.gancho.split(' ').slice(0, 3).join(' ') : 'LEGENDA DINÂMICA'}...
-                      </span>
+                  {/* Final Rendered Composition Preview */}
+                  <div className="relative aspect-[9/16] max-w-[320px] mx-auto overflow-hidden rounded-2xl border-2 border-amber-500 bg-black shadow-2xl">
+                    <video 
+                      src={hyperframesVideoUrl} 
+                      controls 
+                      loop
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 right-3 bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-amber-400 border border-amber-500/20">
+                      Reels Final Compilado
                     </div>
                   </div>
 
                   <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="space-y-1 text-center md:text-left">
                       <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 justify-center md:justify-start">
-                        <CheckCircle className="h-4 w-4" /> Vídeo renderizado com sucesso!
+                        <CheckCircle className="h-4 w-4" /> Reels compilado com sucesso!
                       </span>
-                      <p className="text-[11px] text-zinc-500">Avatar gerado e integrado ao roteiro final.</p>
+                      <p className="text-[11px] text-zinc-500">Vídeo combinado e com legendas ativas.</p>
                     </div>
 
                     <div className="flex gap-2 w-full md:w-auto">
                       <a
-                        href={heygenVideoUrl}
+                        href={hyperframesVideoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-350 hover:text-white border border-zinc-850 px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
+                        className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
                       >
-                        <Download className="h-3.5 w-3.5" /> Baixar Avatar
+                        <Download className="h-3.5 w-3.5" /> Baixar Reels
                       </a>
                     </div>
+                  </div>
+                </div>
+              ) : renderingHyperframes ? (
+                <div className="bg-zinc-950 border border-zinc-900 p-8 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 min-h-[350px]">
+                  <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-zinc-200">{hyperframesStatus}</h4>
+                    <p className="text-zinc-500 text-[11px]">Inicializando Chromium Headless e FFmpeg... ({hyperframesProgress}%)</p>
+                  </div>
+                  <div className="w-full max-w-xs bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-amber-500 h-full transition-all duration-300" style={{ width: `${hyperframesProgress}%` }}></div>
+                  </div>
+                </div>
+              ) : heygenVideoUrl ? (
+                <div className="space-y-5">
+                  {/* HeyGen raw video preview before blending */}
+                  <div className="relative aspect-[9/16] max-w-[320px] mx-auto overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+                    <video 
+                      src={heygenVideoUrl} 
+                      controls 
+                      loop
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold text-emerald-400 border border-emerald-500/20">
+                      Avatar Gerado (Sem corte/legenda)
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-xl space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <Sparkles className="h-4.5 w-4.5 text-amber-500" /> Passo 3.2: Compor com HyperFrames
+                      </h4>
+                      <p className="text-zinc-500 text-[11px] leading-relaxed">
+                        Selecione um layout abaixo para mesclar o corte original, o avatar falante e as legendas animadas em um Reels unificado.
+                      </p>
+                    </div>
+
+                    {/* Layout Selector */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {[
+                        { id: 'split', label: 'Dividido', desc: 'Original topo, avatar base' },
+                        { id: 'overlay', label: 'Talking Head', desc: 'Original cheio, avatar bolha' },
+                        { id: 'full-avatar', label: 'Avatar Cheio', desc: 'Avatar cheio, original inset' }
+                      ].map((lay) => (
+                        <button
+                          key={lay.id}
+                          onClick={() => setHyperframesLayout(lay.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all space-y-1 ${
+                            hyperframesLayout === lay.id
+                              ? 'border-amber-500 bg-amber-500/5 text-amber-500'
+                              : 'border-zinc-850 bg-zinc-950/40 text-zinc-400 hover:border-zinc-800'
+                          }`}
+                        >
+                          <div className="text-[11px] font-bold">{lay.label}</div>
+                          <div className="text-[9px] opacity-70 leading-none truncate">{lay.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleRenderHyperframes}
+                      disabled={renderingHyperframes}
+                      className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-zinc-950 hover:text-white py-3.5 rounded-xl font-bold transition-all shadow-lg hover:scale-[1.01]"
+                    >
+                      <Layers className="h-4 w-4" /> Compor Reels Final
+                    </button>
                   </div>
                 </div>
               ) : generating || polling ? (
@@ -515,7 +644,7 @@ export default function Estudio() {
             )}
 
             {/* Publish Actions */}
-            {heygenVideoUrl && (
+            {hyperframesVideoUrl && (
               <div className="space-y-3">
                 <button
                   onClick={handleSimulatePublish}
