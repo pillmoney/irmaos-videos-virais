@@ -74,6 +74,7 @@ interface ModelingJob {
   status: 'processing' | 'completed' | 'failed';
   variations: Variation[];
   createdAt: string;
+  error?: string;
 }
 
 type PipelineStep = {
@@ -346,6 +347,49 @@ const MOCK_COMPLETED_JOB: ModelingJob = {
   createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
 };
 
+function createMockScoresFromScores(scoresObj: any): ScoreAxis[] {
+  const labels: Record<string, string> = {
+    gancho: 'Força do Gancho',
+    retencao: 'Retenção Prevista',
+    cta: 'Clareza do CTA',
+    originalidade: 'Originalidade',
+    sincronia: 'Sincronia Áudio-Visual',
+    aderencia: 'Aderência à Tendência',
+    legibilidade: 'Legibilidade Legendas',
+  };
+  const weights: Record<string, number> = {
+    gancho: 25,
+    retencao: 20,
+    cta: 15,
+    originalidade: 15,
+    sincronia: 10,
+    aderencia: 10,
+    legibilidade: 5,
+  };
+  
+  const keys = ['gancho', 'retencao', 'cta', 'originalidade', 'sincronia', 'aderencia', 'legibilidade'];
+  const icons = [
+    <Crosshair key="g" className="h-3.5 w-3.5" />,
+    <Eye key="r" className="h-3.5 w-3.5" />,
+    <Target key="c" className="h-3.5 w-3.5" />,
+    <Sparkles key="o" className="h-3.5 w-3.5" />,
+    <Music key="s" className="h-3.5 w-3.5" />,
+    <TrendingUp key="a" className="h-3.5 w-3.5" />,
+    <Type key="l" className="h-3.5 w-3.5" />,
+  ];
+
+  return keys.map((key, i) => {
+    const val = Number(scoresObj[key]) || 90;
+    return {
+      label: labels[key] || key,
+      key,
+      weight: weights[key] || 10,
+      value: val,
+      icon: icons[i],
+    };
+  });
+}
+
 // =============================================
 // Component
 // =============================================
@@ -398,13 +442,14 @@ export default function ModelandoFormatosVirais() {
     setUploadedFiles((prev) => [...prev, ...names]);
   };
 
-  // Simulate modeling process
-  const handleStartModeling = () => {
-    if (!inputUrl && uploadedFiles.length === 0) return;
+  // Start real modeling process calling backend API
+  const handleStartModeling = async () => {
+    const source = inputUrl.trim() || uploadedFiles[0] || '';
+    if (!source) return;
 
     const newJob: ModelingJob = {
       id: 'mj_' + Math.random().toString(36).substr(2, 9),
-      sourceUrl: inputUrl || uploadedFiles[0] || 'upload_local',
+      sourceUrl: source,
       currentStep: 0,
       status: 'processing',
       variations: [],
@@ -418,27 +463,143 @@ export default function ModelandoFormatosVirais() {
     setInputBrief('');
     setUploadedFiles([]);
 
-    // Simulate pipeline progression
-    let step = 0;
-    const interval = setInterval(() => {
-      step++;
+    const updateJobStep = (step: number, extra = {}) => {
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === newJob.id
-            ? {
-                ...j,
-                currentStep: step,
-                status: step >= 6 ? 'completed' : 'processing',
-                variations: step >= 6 ? MOCK_VARIATIONS : [],
-              }
-            : j
+          j.id === newJob.id ? { ...j, currentStep: step, ...extra } : j
         )
       );
-      if (step >= 6) {
-        clearInterval(interval);
-        showToast('Modelagem concluída! 3 variações geradas.');
+    };
+
+    try {
+      const apiUrl = getApiUrl();
+      
+      // Step 0: Ingestão
+      updateJobStep(0);
+      const videoData = await safeFetch(`${apiUrl}/api/analyze-video`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: source,
+          start_time: '00:00',
+          duration: 30
+        })
+      });
+
+      if (!videoData || !videoData.success) {
+        throw new Error(videoData?.error || 'Erro na ingestão do vídeo.');
       }
-    }, 1800);
+
+      // Step 1: Análise
+      updateJobStep(1);
+      const transcript = videoData.transcript || '';
+      const videoTitle = videoData.title || '';
+
+      // Step 2: Blueprint
+      updateJobStep(2);
+      
+      // Step 3: Render (Ask Claude to generate variations)
+      updateJobStep(3);
+
+      const systemPrompt = `Você é um diretor de criação e analista de vídeos curtos especializado em reescrever e otimizar vídeos para engajamento viral (TikTok, Reels e Shorts).
+O tema do vídeo de entrada varia de acordo com o link ou arquivo enviado pelo usuário. Sua tarefa é ler a transcrição, identificar o tema central e reescrever o conteúdo em 3 variações virais melhoradas e adaptadas para o mesmo tema/nicho do vídeo de entrada.
+Importante: O tema das variações deve ser focado no mesmo nicho/assunto do vídeo original, porém otimizado com técnicas de retenção, ganchos magnéticos e enredos dinâmicos!
+
+Você deve responder ESTRITAMENTE com um objeto JSON no seguinte formato:
+{
+  "variations": [
+    {
+      "index": 1,
+      "totalScore": 95,
+      "scores": {
+        "gancho": 98,
+        "retencao": 95,
+        "cta": 90,
+        "originalidade": 95,
+        "sincronia": 92,
+        "aderencia": 95,
+        "legibilidade": 98
+      },
+      "caption": "Legenda otimizada para redes sociais, incluindo emojis e contextualizando o tema",
+      "hashtags": "#tema #viral #dicas #aprendizado",
+      "prompts": {
+        "veo3": "Prompt detalhado para geração de vídeo no Veo 3 com descrição de cena e personagem consistente",
+        "seedance": "Prompt detalhado para geração no Seedance",
+        "kling": "Prompt detalhado para geração no Kling"
+      }
+    },
+    ...
+  ]
+}`;
+
+      const userPrompt = `Vídeo Original:
+Título: ${videoTitle}
+Transcrição: ${transcript}
+Briefing Adicional do Usuário: ${inputBrief || 'Nenhum'}
+
+Crie 3 variações otimizadas para o mesmo tema/nicho deste vídeo.
+Para cada variação:
+1. Melhore a copy estruturando a narrativa com técnicas de retenção (gancho forte, corpo envolvente e chamada de ação clara).
+2. Escreva uma legenda (caption) comercial com hashtags adequadas para o nicho do vídeo.
+3. Forneça prompts de geração de cena consistentes para Veo 3, Seedance e Kling contendo descrição do personagem âncora, enquadramentos e cenários baseados no nicho.
+4. Defina as notas (de 50 a 100) para cada um dos eixos de pontuação (gancho, retencao, cta, originalidade, sincronia, aderencia, legibilidade) e calcule o totalScore usando a média ponderada apropriada.
+Retorne estritamente o JSON válido, sem qualquer texto introdutório ou markdown extra fora do JSON.`;
+
+      const aiData = await safeFetch(`${apiUrl}/api/generate-script`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: systemPrompt,
+          prompt: userPrompt,
+          max_tokens: 3000
+        })
+      });
+
+      // Step 4: Score / Parse
+      updateJobStep(4);
+      const aiText = aiData.content?.[0]?.text || aiData.content || '{}';
+      
+      // Extract JSON if wrapped in markdown
+      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : aiText;
+      const parsed = JSON.parse(cleanJson);
+      
+      const rawVariations = parsed.variations || [];
+      if (rawVariations.length === 0) {
+        throw new Error('Nenhuma variação foi gerada pela IA.');
+      }
+
+      // Convert backend JSON format to frontend Variation format
+      const processedVariations: Variation[] = rawVariations.map((v: any, idx: number) => {
+        const scores = createMockScoresFromScores(v.scores || {});
+        return {
+          id: `var_${newJob.id}_${idx + 1}`,
+          index: v.index || (idx + 1),
+          totalScore: v.totalScore || 90,
+          scores,
+          caption: v.caption || '',
+          hashtags: v.hashtags || '',
+          projectId: null,
+          projectStatus: null,
+          prompts: v.prompts || { veo3: '', seedance: '', kling: '' }
+        };
+      });
+
+      // Step 5: Pronto (Complete)
+      updateJobStep(5, {
+        status: 'completed',
+        variations: processedVariations
+      });
+      showToast(`Modelagem concluída! ${processedVariations.length} variações geradas.`);
+
+    } catch (err: any) {
+      console.error(err);
+      updateJobStep(5, {
+        status: 'failed',
+        error: err.message || 'Erro durante a modelagem viral'
+      });
+      showToast(err.message || 'Erro na modelagem viral', 'error');
+    }
   };
 
   // Create project from variation
@@ -559,6 +720,7 @@ export default function ModelandoFormatosVirais() {
   // Completed job for display
   const completedJobs = jobs.filter((j) => j.status === 'completed' && j.variations.length > 0);
   const processingJobs = jobs.filter((j) => j.status === 'processing');
+  const failedJobs = jobs.filter((j) => j.status === 'failed');
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full space-y-8 relative">
@@ -812,6 +974,43 @@ export default function ModelandoFormatosVirais() {
                   style={{ width: `${(job.currentStep / 6) * 100}%` }}
                 />
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ==================== SECTION B2: FAILED JOBS ==================== */}
+      {failedJobs.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-500" /> Falhas no Processamento
+          </h3>
+          {failedJobs.map((job) => (
+            <div
+              key={job.id}
+              className="bg-rose-950/10 border border-rose-900/40 rounded-2xl p-6 space-y-3 animate-in fade-in-50 duration-300"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-rose-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white truncate max-w-md">
+                      {job.sourceUrl}
+                    </p>
+                    <p className="text-[11px] text-zinc-500">
+                      Falhou às {new Date(job.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-full">
+                  FALHOU
+                </span>
+              </div>
+              <p className="text-xs text-rose-400 font-semibold bg-rose-950/20 p-3.5 rounded-lg border border-rose-900/20 leading-relaxed">
+                {job.error || 'Erro inesperado durante o processamento da modelagem.'}
+              </p>
             </div>
           ))}
         </div>
