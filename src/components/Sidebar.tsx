@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   HardHat,
   Sun,
-  TrendingUp
+  TrendingUp,
+  Target
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/utils';
 
@@ -48,6 +49,7 @@ export default function Sidebar() {
     { name: 'Novo Projeto', href: '/novo-projeto', icon: Video },
     { name: 'Roteirizador', href: '/roteiro', icon: FileText },
     { name: 'Estúdio UGC', href: '/estudio', icon: Tv },
+    { name: 'Modelando Formatos Virais', href: '/modelando', icon: Target },
     { name: 'Agente Estrategista', href: '/estrategista', icon: TrendingUp },
   ];
 

@@ -820,5 +820,423 @@ export const db = {
       setLocalStorageItem('db_montagens', updatedList);
       return updatedList.find((m: any) => m.id === id);
     }
+  },
+
+  // ==========================================
+  // MODELANDO FORMATOS VIRAIS – MODULE TABLES
+  // ==========================================
+
+  modelingSources: {
+    create: async (url: string, brief_text: string, screenshot_url?: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_sources').insert([{
+          url, screenshot_url: screenshot_url || null, brief_text, status: 'pending'
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_sources', []);
+      const newItem = {
+        id: 'ms_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        url,
+        screenshot_url: screenshot_url || null,
+        brief_text,
+        status: 'pending' as 'pending' | 'analyzing' | 'blueprint' | 'rendering' | 'scoring' | 'done' | 'error',
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_modeling_sources', [newItem, ...list]);
+      return newItem;
+    },
+    list: async () => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_sources').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return getLocalStorageItem('irmaos_modeling_sources', []);
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_sources').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_sources', []);
+      return list.find((s: any) => s.id === id) || null;
+    },
+    update: async (id: string, updates: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_sources').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_sources', []);
+      const updatedList = list.map((s: any) => s.id === id ? { ...s, ...updates } : s);
+      setLocalStorageItem('irmaos_modeling_sources', updatedList);
+      return updatedList.find((s: any) => s.id === id);
+    },
+    delete: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('modeling_sources').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_sources', []);
+      setLocalStorageItem('irmaos_modeling_sources', list.filter((s: any) => s.id !== id));
+      return true;
+    }
+  },
+
+  modelingAnalysis: {
+    create: async (source_id: string, analysisData: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_analysis').insert([{
+          source_id,
+          transcript: analysisData.transcript,
+          hook_json: analysisData.hook_json,
+          body_json: analysisData.body_json,
+          cta_json: analysisData.cta_json,
+          framing_type: analysisData.framing_type,
+          scenario_json: analysisData.scenario_json,
+          product_json: analysisData.product_json,
+          virality_hypothesis: analysisData.virality_hypothesis,
+          performance_signals_json: analysisData.performance_signals_json,
+          matched_format_id: analysisData.matched_format_id || null
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_analysis', []);
+      const newItem = {
+        id: 'ma_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        source_id,
+        transcript: analysisData.transcript || '',
+        hook_json: analysisData.hook_json || null,
+        body_json: analysisData.body_json || null,
+        cta_json: analysisData.cta_json || null,
+        framing_type: analysisData.framing_type || 'talking_head' as 'arm_only' | 'talking_head' | 'product_demo' | 'lifestyle',
+        scenario_json: analysisData.scenario_json || null,
+        product_json: analysisData.product_json || null,
+        virality_hypothesis: analysisData.virality_hypothesis || '',
+        performance_signals_json: analysisData.performance_signals_json || null,
+        matched_format_id: analysisData.matched_format_id || null,
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_modeling_analysis', [newItem, ...list]);
+      return newItem;
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_analysis').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_analysis', []);
+      return list.find((a: any) => a.id === id) || null;
+    },
+    getBySource: async (source_id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_analysis').select('*').eq('source_id', source_id).maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_analysis', []);
+      return list.find((a: any) => a.source_id === source_id) || null;
+    },
+    update: async (id: string, updates: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_analysis').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_analysis', []);
+      const updatedList = list.map((a: any) => a.id === id ? { ...a, ...updates } : a);
+      setLocalStorageItem('irmaos_modeling_analysis', updatedList);
+      return updatedList.find((a: any) => a.id === id);
+    }
+  },
+
+  modelingBlueprints: {
+    create: async (source_id: string, variations_json: any, variant_count: number, avatar_id?: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_blueprints').insert([{
+          source_id, variations_json, variant_count, avatar_id: avatar_id || null
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_blueprints', []);
+      const newItem = {
+        id: 'mb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        source_id,
+        variations_json,
+        variant_count,
+        avatar_id: avatar_id || null,
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_modeling_blueprints', [newItem, ...list]);
+      return newItem;
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_blueprints').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_blueprints', []);
+      return list.find((b: any) => b.id === id) || null;
+    },
+    getBySource: async (source_id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_blueprints').select('*').eq('source_id', source_id).maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_blueprints', []);
+      return list.find((b: any) => b.source_id === source_id) || null;
+    },
+    list: async () => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_blueprints').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return getLocalStorageItem('irmaos_modeling_blueprints', []);
+    }
+  },
+
+  modelingVariations: {
+    create: async (blueprint_id: string, idx: number, variationData: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_variations').insert([{
+          blueprint_id,
+          idx,
+          script: variationData.script,
+          storyboard_json: variationData.storyboard_json,
+          caption: variationData.caption,
+          hashtags: variationData.hashtags,
+          render_urls_json: variationData.render_urls_json || null,
+          score_total: variationData.score_total || null,
+          score_axes_json: variationData.score_axes_json || null,
+          project_id: variationData.project_id || null,
+          status: 'pending'
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_variations', []);
+      const newItem = {
+        id: 'mv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        blueprint_id,
+        idx,
+        script: variationData.script || '',
+        storyboard_json: variationData.storyboard_json || null,
+        caption: variationData.caption || '',
+        hashtags: variationData.hashtags || '',
+        render_urls_json: variationData.render_urls_json || null,
+        score_total: variationData.score_total || null,
+        score_axes_json: variationData.score_axes_json || null,
+        project_id: variationData.project_id || null,
+        status: 'pending' as 'pending' | 'rendering' | 'scoring' | 'approved' | 'revision' | 'failed',
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_modeling_variations', [newItem, ...list]);
+      return newItem;
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_variations').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_variations', []);
+      return list.find((v: any) => v.id === id) || null;
+    },
+    listByBlueprint: async (blueprint_id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_variations').select('*').eq('blueprint_id', blueprint_id).order('idx', { ascending: true });
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_variations', []);
+      return list.filter((v: any) => v.blueprint_id === blueprint_id).sort((a: any, b: any) => a.idx - b.idx);
+    },
+    update: async (id: string, updates: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_variations').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_variations', []);
+      const updatedList = list.map((v: any) => v.id === id ? { ...v, ...updates } : v);
+      setLocalStorageItem('irmaos_modeling_variations', updatedList);
+      return updatedList.find((v: any) => v.id === id);
+    },
+    delete: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.from('modeling_variations').delete().eq('id', id);
+        if (error) throw error;
+        return true;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_variations', []);
+      setLocalStorageItem('irmaos_modeling_variations', list.filter((v: any) => v.id !== id));
+      return true;
+    }
+  },
+
+  modelingJobs: {
+    create: async (type: 'analyze' | 'blueprint' | 'render' | 'score' | 'create_project', payload_json: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_jobs').insert([{
+          type, payload_json, status: 'queued', attempts: 0, error: null
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_jobs', []);
+      const newItem = {
+        id: 'mj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        type,
+        payload_json,
+        status: 'queued' as 'queued' | 'running' | 'done' | 'error',
+        attempts: 0,
+        error: null as string | null,
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_modeling_jobs', [newItem, ...list]);
+      return newItem;
+    },
+    list: async () => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_jobs').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return getLocalStorageItem('irmaos_modeling_jobs', []);
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_jobs').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_jobs', []);
+      return list.find((j: any) => j.id === id) || null;
+    },
+    update: async (id: string, updates: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('modeling_jobs').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_modeling_jobs', []);
+      const updatedList = list.map((j: any) => j.id === id ? { ...j, ...updates } : j);
+      setLocalStorageItem('irmaos_modeling_jobs', updatedList);
+      return updatedList.find((j: any) => j.id === id);
+    }
+  },
+
+  formatLibrary: {
+    create: async (formatData: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('format_library').insert([{
+          name: formatData.name,
+          framing_type: formatData.framing_type,
+          shot_sequence_json: formatData.shot_sequence_json,
+          hook_archetype: formatData.hook_archetype,
+          cta_type: formatData.cta_type,
+          viral_factors_json: formatData.viral_factors_json,
+          performance_benchmark_json: formatData.performance_benchmark_json,
+          win_rate: formatData.win_rate || 0,
+          sample_size: formatData.sample_size || 0
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_format_library', []);
+      const newItem = {
+        id: 'fl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        name: formatData.name,
+        framing_type: formatData.framing_type,
+        shot_sequence_json: formatData.shot_sequence_json || null,
+        hook_archetype: formatData.hook_archetype || '',
+        cta_type: formatData.cta_type || '',
+        viral_factors_json: formatData.viral_factors_json || null,
+        performance_benchmark_json: formatData.performance_benchmark_json || null,
+        win_rate: formatData.win_rate || 0,
+        sample_size: formatData.sample_size || 0,
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_format_library', [newItem, ...list]);
+      return newItem;
+    },
+    list: async () => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('format_library').select('*').order('win_rate', { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+      return getLocalStorageItem('irmaos_format_library', []);
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('format_library').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_format_library', []);
+      return list.find((f: any) => f.id === id) || null;
+    },
+    update: async (id: string, updates: any) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('format_library').update(updates).eq('id', id).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_format_library', []);
+      const updatedList = list.map((f: any) => f.id === id ? { ...f, ...updates } : f);
+      setLocalStorageItem('irmaos_format_library', updatedList);
+      return updatedList.find((f: any) => f.id === id);
+    }
+  },
+
+  externalPrompts: {
+    create: async (variation_id: string, target_model: 'veo3' | 'seedance' | 'kling', prompt_text: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('external_prompts').insert([{
+          variation_id, target_model, prompt_text
+        }]).select().single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_external_prompts', []);
+      const newItem = {
+        id: 'ep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        variation_id,
+        target_model,
+        prompt_text,
+        created_at: new Date().toISOString()
+      };
+      setLocalStorageItem('irmaos_external_prompts', [newItem, ...list]);
+      return newItem;
+    },
+    listByVariation: async (variation_id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('external_prompts').select('*').eq('variation_id', variation_id).order('created_at', { ascending: true });
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_external_prompts', []);
+      return list.filter((p: any) => p.variation_id === variation_id);
+    },
+    get: async (id: string) => {
+      if (isSupabaseConfigured && supabase) {
+        const { data, error } = await supabase.from('external_prompts').select('*').eq('id', id).single();
+        if (error) throw error;
+        return data;
+      }
+      const list = getLocalStorageItem('irmaos_external_prompts', []);
+      return list.find((p: any) => p.id === id) || null;
+    }
   }
 };
