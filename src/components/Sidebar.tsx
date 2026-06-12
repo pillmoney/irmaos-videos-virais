@@ -13,8 +13,10 @@ import {
   CheckCircle2, 
   AlertTriangle,
   HardHat,
-  Sun
+  Sun,
+  TrendingUp
 } from 'lucide-react';
+import { getApiUrl } from '@/lib/utils';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -24,7 +26,7 @@ export default function Sidebar() {
   useEffect(() => {
     async function checkConfig() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/api/config-status`);
         if (res.ok) {
           const data = await res.ok ? await res.json() : null;
@@ -45,7 +47,8 @@ export default function Sidebar() {
     { name: 'Painel Geral', href: '/', icon: LayoutDashboard },
     { name: 'Novo Projeto', href: '/novo-projeto', icon: Video },
     { name: 'Roteirizador', href: '/roteiro', icon: FileText },
-    { name: 'Estúdio HeyGen', href: '/estudio', icon: Tv },
+    { name: 'Estúdio UGC', href: '/estudio', icon: Tv },
+    { name: 'Agente Estrategista', href: '/estrategista', icon: TrendingUp },
   ];
 
   return (

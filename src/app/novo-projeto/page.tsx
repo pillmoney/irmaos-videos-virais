@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/supabase';
+import { getApiUrl, getProxiedUrl, safeFetch } from '@/lib/utils';
 import { 
   ArrowLeft, 
   Link2, 
@@ -15,10 +16,11 @@ import {
   CheckCircle2,
   ListRestart,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Upload
 } from 'lucide-react';
 
-export default function NovoProjeto() {
+function NovoProjetoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdParam = searchParams?.get('id');
@@ -29,6 +31,11 @@ export default function NovoProjeto() {
   const [projectName, setProjectName] = useState('');
   const [startTime, setStartTime] = useState('00:00');
   const [duration, setDuration] = useState('60');
+  const [moduloCodigo, setModuloCodigo] = useState('A');
+  
+  // Local File Upload states
+  const [uploadingRef, setUploadingRef] = useState(false);
+  const [uploadRefError, setUploadRefError] = useState('');
   
   // Status flags during processing
   const [statusLogs, setStatusLogs] = useState<string[]>([]);
@@ -43,8 +50,55 @@ export default function NovoProjeto() {
   useEffect(() => {
     if (projectIdParam) {
       loadExistingProject(projectIdParam);
+    } else {
+      const importUrl = searchParams?.get('import_url');
+      const importName = searchParams?.get('name');
+      if (importUrl) {
+        setVideoUrl(importUrl);
+      }
+      if (importName) {
+        setProjectName(importName);
+      }
     }
-  }, [projectIdParam]);
+  }, [projectIdParam, searchParams]);
+
+  const handleUploadReferenceVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingRef(true);
+      setUploadRefError('');
+      
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const apiUrl = getApiUrl();
+      const res = await fetch(`${apiUrl}/api/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao fazer upload do vídeo.');
+      }
+
+      if (data.success && data.url) {
+        setVideoUrl(data.url);
+        // Pre-fill project name if empty
+        if (!projectName) {
+          const cleanName = file.name.replace(/\.[^/.]+$/, ""); // remove extension
+          setProjectName(`Projeto Local - ${cleanName}`);
+        }
+      }
+    } catch (err: any) {
+      console.warn(err);
+      setUploadRefError(err.message || 'Erro ao carregar arquivo de referência.');
+    } finally {
+      setUploadingRef(false);
+    }
+  };
 
   const loadExistingProject = async (id: string) => {
     try {
@@ -53,6 +107,9 @@ export default function NovoProjeto() {
       if (proj) {
         setProject(proj);
         setProjectName(proj.nome);
+        if (proj.modulo_codigo) {
+          setModuloCodigo(proj.modulo_codigo);
+        }
         
         const videos = await db.videos_fonte.list(id);
         if (videos && videos.length > 0) {
@@ -72,7 +129,7 @@ export default function NovoProjeto() {
         }
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }
@@ -97,17 +154,17 @@ export default function NovoProjeto() {
       const name = projectName.trim() || `Projeto Viral - ${new Date().toLocaleDateString('pt-BR')}`;
       let currentProject = project;
       if (!currentProject) {
-        currentProject = await db.projetos.create(name);
+        currentProject = await db.projetos.create(name, moduloCodigo);
         setProject(currentProject);
-      } else if (name !== currentProject.nome) {
-        currentProject = await db.projetos.update(currentProject.id, { nome: name });
+      } else if (name !== currentProject.nome || moduloCodigo !== currentProject.modulo_codigo) {
+        currentProject = await db.projetos.update(currentProject.id, { nome: name, modulo_codigo: moduloCodigo });
         setProject(currentProject);
       }
 
       // 2. Fetch and trim video through local Flask API
       addLog('Conectando ao Youtube/Redes Sociais e extraindo vídeo...');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const analyzeRes = await fetch(`${apiUrl}/api/analyze-video`, {
+      const apiUrl = getApiUrl();
+      const videoData = await safeFetch(`${apiUrl}/api/analyze-video`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -116,13 +173,6 @@ export default function NovoProjeto() {
           duration: parseFloat(duration)
         })
       });
-
-      if (!analyzeRes.ok) {
-        const errData = await analyzeRes.json();
-        throw new Error(errData.error || 'Erro ao processar o vídeo no servidor local.');
-      }
-
-      const videoData = await analyzeRes.json();
       addLog('Vídeo baixado, cortado no formato vertical 9:16 e transcrevido!');
 
       // Save video_fonte in DB
@@ -139,7 +189,7 @@ export default function NovoProjeto() {
       addLog('Enviando transcrição para o Claude AI analisar a viralidade do gancho...');
       
       const systemPrompt = `Você é um analista especializado em vídeos curtos virais de Reels/TikTok no nicho de construção civil e energia solar no Brasil (estilo da conta @irmaosnaobra__).
-Sua tarefa é analisar a transcrição de um vídeo e identificar os melhores trechos de corte (gancho forte, corpo, relevância para o público).
+Sua tarefa é analisar a transcrição de um vídeo e identificar os melhores trechos de corte (gancho forte, corpo, relevância para o público) para o **Módulo ${moduloCodigo === 'A' ? 'A (UGC Ads)' : moduloCodigo === 'B' ? 'B (Orgânico)' : 'C (Porta-voz Ads)'}**.
 Você deve retornar uma resposta JSON contendo um array de 1 a 2 trechos recomendados para corte. 
 Formato JSON estrito a retornar:
 {
@@ -160,31 +210,28 @@ Transcrição completa: ${videoData.transcript}
 
 Identifique os trechos mais virais que representam erros na obra, dúvidas de energia solar, ou curiosidades de construção. Estime os tempos de início e fim em milissegundos dentro do limite total de ${parseFloat(duration) * 1000} ms. Retorne estritamente o JSON válido.`;
 
-      const aiRes = await fetch(`${apiUrl}/api/generate-script`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system: systemPrompt,
-          prompt: userPrompt
-        })
-      });
-
       let parsedCuts = [];
-      if (aiRes.ok) {
-        const aiData = await aiRes.json();
+      try {
+        const aiData = await safeFetch(`${apiUrl}/api/generate-script`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system: systemPrompt,
+            prompt: userPrompt
+          })
+        });
+
         const aiText = aiData.content?.[0]?.text || aiData.content || '{}';
         
-        try {
-          // Extract JSON if wrapped in markdown
-          const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-          const cleanJson = jsonMatch ? jsonMatch[0] : aiText;
-          const parsed = JSON.parse(cleanJson);
-          parsedCuts = parsed.trechos || [];
-          addLog('Análise de IA concluída com sucesso!');
-        } catch (jsonErr) {
-          console.error("Erro ao fazer parse do JSON da IA:", aiText);
-          parsedCuts = [];
-        }
+        // Extract JSON if wrapped in markdown
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+        const cleanJson = jsonMatch ? jsonMatch[0] : aiText;
+        const parsed = JSON.parse(cleanJson);
+        parsedCuts = parsed.trechos || [];
+        addLog('Análise de IA concluída com sucesso!');
+      } catch (aiErr: any) {
+        console.error("Erro na chamada ou parse da IA:", aiErr);
+        parsedCuts = [];
       }
 
       // Se falhar a IA ou não extrair nada, cria um trecho padrão com a duração inteira
@@ -223,7 +270,7 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
       
       setStep(3);
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       addLog(`ERRO: ${err.message || 'Erro inesperado durante o processamento'}`);
     } finally {
       setLoading(false);
@@ -240,7 +287,7 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
       // Navigate to Script editing page (Step 2)
       router.push(`/roteiro?id=${project.id}&trechoId=${selectedTrecho}`);
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }
@@ -296,6 +343,57 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
               />
             </div>
 
+            <div className="space-y-3 md:col-span-2">
+              <label className="text-sm font-bold text-zinc-300 block">Módulo de Produção de Vídeo</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  {
+                    code: 'A',
+                    name: 'Módulo A: UGC Ads',
+                    desc: 'Anúncios pagos (UGC) com ganchos ultra-rápidos e avatares reais.',
+                    durationDefault: '15',
+                    badge: 'Pago'
+                  },
+                  {
+                    code: 'B',
+                    name: 'Módulo B: Orgânico',
+                    desc: 'Vídeos da marca para engajamento orgânico do canal @irmaosnaobra.',
+                    durationDefault: '60',
+                    badge: 'Orgânico'
+                  },
+                  {
+                    code: 'C',
+                    name: 'Módulo C: Porta-voz',
+                    desc: 'Criativos em formato de porta-voz e avatar institucional pago.',
+                    durationDefault: '15',
+                    badge: 'Pago'
+                  }
+                ].map((mod) => (
+                  <button
+                    key={mod.code}
+                    type="button"
+                    onClick={() => {
+                      setModuloCodigo(mod.code);
+                      setDuration(mod.durationDefault);
+                    }}
+                    className={`flex flex-col text-left p-5 rounded-2xl border transition-all duration-200 relative overflow-hidden ${
+                      moduloCodigo === mod.code
+                        ? 'border-amber-500 bg-amber-500/5 shadow-lg shadow-amber-500/5'
+                        : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700/60'
+                    }`}
+                  >
+                    <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      mod.badge === 'Orgânico' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    }`}>
+                      {mod.badge}
+                    </span>
+                    <h4 className="text-sm font-extrabold text-white">{mod.name}</h4>
+                    <p className="text-zinc-500 text-xs mt-1 leading-relaxed">{mod.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-bold text-zinc-300">Link do Vídeo (YouTube, Reels ou TikTok)</label>
               <div className="relative">
@@ -312,6 +410,44 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
               <span className="text-[11px] text-zinc-500 block">
                 Dica: Você também pode digitar um termo de busca e o sistema pegará o primeiro vídeo do YouTube.
               </span>
+
+              {/* Upload Fallback Section */}
+              <div className="mt-4 p-4.5 bg-zinc-950/40 border border-dashed border-zinc-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                    <Upload className="h-3.5 w-3.5 text-amber-500" /> Ou envie um arquivo local (.mp4)
+                  </h4>
+                  <p className="text-[11px] text-zinc-500">
+                    Bypass de scraper: use esta opção se o link estiver dando erro ou for bloqueado por robôs.
+                  </p>
+                </div>
+                <div>
+                  <label className={`inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700/80 hover:bg-zinc-800/60 text-zinc-300 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${uploadingRef ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <input 
+                      type="file" 
+                      accept="video/mp4,video/quicktime,video/x-matroska,video/webm" 
+                      className="hidden" 
+                      onChange={handleUploadReferenceVideo}
+                      disabled={uploadingRef}
+                    />
+                    {uploadingRef ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin"></div>
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5 text-zinc-400" /> Selecionar Arquivo
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+              {uploadRefError && (
+                <p className="text-xs text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {uploadRefError}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -333,12 +469,22 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
                 onChange={(e) => setDuration(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-amber-500/50 outline-none transition-colors font-semibold"
               >
-                <option value="15">15 Segundos (Rápido)</option>
-                <option value="30">30 Segundos (Ideal)</option>
-                <option value="45">45 Segundos</option>
-                <option value="60">60 Segundos (Recomendado)</option>
-                <option value="90">90 Segundos</option>
-                <option value="120">120 Segundos (Máximo)</option>
+                {moduloCodigo !== 'B' ? (
+                  <>
+                    <option value="8">8 Segundos (Duração Padrão / Econômica)</option>
+                    <option value="15">15 Segundos</option>
+                    <option value="30">30 Segundos (Teto Módulo {moduloCodigo})</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="15">15 Segundos</option>
+                    <option value="30">30 Segundos</option>
+                    <option value="45">45 Segundos</option>
+                    <option value="60">60 Segundos (Recomendado Orgânico)</option>
+                    <option value="90">90 Segundos</option>
+                    <option value="120">120 Segundos (Máximo)</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -358,12 +504,22 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
       {/* STEP 2: PROCESSING LOGS */}
       {step === 2 && (
         <div className="bg-zinc-900/30 border border-zinc-800/80 p-8 rounded-2xl flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-          <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          {loading ? (
+            <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center text-red-500">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+          )}
           
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-white">Processando Vídeo e Transcrição</h3>
+            <h3 className="text-xl font-bold text-white">
+              {loading ? 'Processando Vídeo e Transcrição' : 'Erro no Processamento'}
+            </h3>
             <p className="text-zinc-500 text-sm max-w-md">
-              O vídeo está sendo baixado em alta definição, cortado na proporção Reels (9:16) e analisado pela IA do Claude.
+              {loading 
+                ? 'O vídeo está sendo baixado em alta definição, cortado na proporção Reels (9:16) e analisado pela IA do Claude.'
+                : 'Ocorreu um erro ao processar o seu vídeo. Verifique os logs abaixo para detalhes.'}
             </p>
           </div>
 
@@ -372,10 +528,26 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
             {statusLogs.map((log, idx) => (
               <div key={idx} className="flex items-start gap-2">
                 <span className="text-amber-500/80 shrink-0">➜</span>
-                <span className={idx === statusLogs.length - 1 ? 'text-zinc-200 font-bold' : ''}>{log}</span>
+                <span className={idx === statusLogs.length - 1 ? (log.startsWith('ERRO:') ? 'text-red-400 font-bold font-extrabold' : 'text-zinc-200 font-bold') : ''}>{log}</span>
               </div>
             ))}
           </div>
+
+          {!loading && (
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setTrechos([]);
+                  setSelectedTrecho(null);
+                }}
+                className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+              >
+                <ArrowLeft className="h-4 w-4" /> Voltar e Ajustar Link
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -393,7 +565,7 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
               {videoFonte?.transcricao_json?.processed_url ? (
                 <div className="relative aspect-[9/16] max-h-[500px] mx-auto overflow-hidden rounded-xl border border-zinc-800 bg-black">
                   <video 
-                    src={videoFonte.transcricao_json.processed_url} 
+                    src={getProxiedUrl(videoFonte.transcricao_json.processed_url)} 
                     controls 
                     className="w-full h-full object-cover"
                   />
@@ -493,5 +665,13 @@ Identifique os trechos mais virais que representam erros na obra, dúvidas de en
         </div>
       )}
     </div>
+  );
+}
+
+export default function NovoProjeto() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-zinc-500 font-semibold">Carregando painel de ingestão...</div>}>
+      <NovoProjetoContent />
+    </Suspense>
   );
 }
