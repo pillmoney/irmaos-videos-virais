@@ -87,15 +87,14 @@ export default function Estrategista() {
       review: 'Fenômeno. Gancho de indignação sobre impostos/taxas ativa um sentimento coletivo forte. A CTA pedindo para comentar "SOLAR" gerou enxurrada de comentários, o que forçou o algoritmo a distribuir o Reels.'
     }
   ]);
-
   const [chatMessages, setChatMessages] = useState<Message[]>([
     {
       role: 'assistant',
       content: `Olá! Sou o seu **Agente Estrategista de IA** focado no perfil **@irmaosnaobra__**. 
 
-Analisei as métricas reais do seu perfil (com **1.019 seguidores** e **70 publicações**). O seu Reels sobre **"Taxa Secreta da Cemig"** foi o seu melhor desempenho recente, alcançando **15.8K visualizações** (excelente para o tamanho da sua conta) e **94% de retenção média**. 
+Estou pronto para ajudar você a analisar concorrência, estruturar ganchos virais de alta retenção e planejar vídeos de alto impacto para o nicho de construção civil e energia solar.
 
-O segredo do seu engajamento está em ganchos de **indignação ou prejuízo financeiro na obra** combinados com **CTAs de comentários (como "Comente SOLAR")**.
+O segredo para reter o público está em ganchos de **indignação ou prejuízo financeiro na obra** combinados com **CTAs de comentários (como "Comente SOLAR")**.
 
 Sobre o que você quer estrategizar hoje? Escolha um prompt rápido abaixo ou envie sua dúvida!`
     }
@@ -160,10 +159,9 @@ Sua missão é dar diagnósticos analíticos, decifrar o algoritmo do Instagram/
 
 Suas regras de atuação:
 1. Responda de forma direta, tática e extremamente acionável (use tópicos, negritos e insights práticos).
-2. Use dados e métricas do perfil nas análises (Seguidores: 1.019, Publicações: 70, Vídeo mais viral: "Taxa Secreta da Cemig" com 15.8K views e 94% de retenção).
-3. Adapte-se ao nicho do usuário: se ele perguntar sobre energia solar ou obras, use ganchos de medo de prejuízo, erros comuns em obras e as tarifas da Cemig.
-4. Se ele quiser testar outros nichos/produtos (ex: roupas, ferramentas, etc.), ensine-o a modelar o formato de react viral (gancho visual forte + reações expressivas + explicação de valor rápida + CTA de comentários) para esse novo nicho.
-5. Sempre forneça exemplos de ganchos (0-3s), corpo (3-12s) e CTA (12-15s) prontos para uso.`;
+2. Adapte-se ao nicho do usuário: se ele perguntar sobre energia solar ou obras, use ganchos de medo de prejuízo, erros comuns em obras e as tarifas da Cemig.
+3. Se ele quiser testar outros nichos/produtos (ex: roupas, ferramentas, etc.), ensine-o a modelar o formato de react viral (gancho visual forte + reações expressivas + explicação de valor rápida + CTA de comentários) para esse novo nicho.
+4. Sempre forneça exemplos de ganchos (0-3s), corpo (3-12s) e CTA (12-15s) prontos para uso.`;
 
       const userPrompt = `Histórico recente da conversa:
 ${JSON.stringify(newMessages.slice(-6))}
@@ -205,66 +203,8 @@ Por favor, dê uma resposta estratégica detalhada em português, ensinando como
           </div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight">Agente Estrategista & Analítico</h2>
           <p className="text-zinc-400 text-sm mt-1">
-            Métricas em tempo real de <span className="text-amber-500 font-semibold">{metrics.username}</span> e inteligência preditiva para bater o algoritmo do Instagram Reels.
+            Inteligência preditiva e análise de concorrência para o perfil <span className="text-amber-500 font-semibold">@irmaosnaobra__</span> estruturar ideias de vídeos virais.
           </p>
-        </div>
-
-        <button 
-          onClick={() => {
-            setLoading(true);
-            setTimeout(() => setLoading(false), 1000);
-          }}
-          className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Sincronizar Instagram
-        </button>
-      </div>
-
-      {/* Overview Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-zinc-900/30 border border-zinc-800/80 p-5 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-500 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider">Seguidores</span>
-            <Users className="h-4.5 w-4.5 text-amber-500" />
-          </div>
-          <div>
-            <span className="text-2xl font-extrabold text-white">{metrics.followers}</span>
-            <span className="text-xs text-emerald-400 font-bold ml-2">{metrics.followersGrowth}</span>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900/30 border border-zinc-800/80 p-5 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-500 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider">Alcance Médio</span>
-            <Eye className="h-4.5 w-4.5 text-amber-500" />
-          </div>
-          <div>
-            <span className="text-2xl font-extrabold text-white">{metrics.avgViews}</span>
-            <span className="text-[10px] text-zinc-500 font-semibold ml-2">por Reels</span>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900/30 border border-zinc-800/80 p-5 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-500 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider">Taxa de Engajamento</span>
-            <TrendingUp className="h-4.5 w-4.5 text-amber-500" />
-          </div>
-          <div>
-            <span className="text-2xl font-extrabold text-white">{metrics.engagementRate}</span>
-            <span className="text-xs text-emerald-400 font-bold ml-2">Altíssimo 🔥</span>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900/30 border border-zinc-800/80 p-5 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-zinc-500 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Publicações</span>
-            <Instagram className="h-4.5 w-4.5 text-amber-500" />
-          </div>
-          <div>
-            <span className="text-2xl font-extrabold text-white">{metrics.postsCount}</span>
-            <span className="text-[10px] text-zinc-500 font-semibold ml-2">vídeos ativos</span>
-          </div>
         </div>
       </div>
 
@@ -296,92 +236,40 @@ Por favor, dê uma resposta estratégica detalhada em português, ensinando como
       {activeTab === 'diagnostico' && (
         <div className="grid lg:grid-cols-5 gap-8">
         
-        {/* Left Side: Analytics & Recipe (3 cols) */}
-        <div className="lg:col-span-3 space-y-6">
-          
-          {/* Recent Performance Analysis */}
-          <div className="bg-zinc-900/30 border border-zinc-800/80 p-6 rounded-2xl space-y-5">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Instagram className="h-5 w-5 text-amber-500" /> Histórico de Reels & Diagnóstico de IA
-            </h3>
+          {/* Left Side: Recipe (2 cols) */}
+          <div className="lg:col-span-2 space-y-6">
             
-            <div className="space-y-4">
-              {recentPosts.map((post) => (
-                <div key={post.id} className="bg-zinc-950 border border-zinc-900 p-4.5 rounded-xl space-y-3.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold text-zinc-300 line-clamp-1">{post.title}</span>
-                    <span className={`self-start sm:self-auto text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
-                      post.status === 'super-viral' 
-                        ? 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse'
-                        : post.status === 'viral' 
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        : 'bg-zinc-800 text-zinc-400'
-                    }`}>
-                      {post.status.replace('-', ' ')}
-                    </span>
-                  </div>
-
-                  {/* Post Stats */}
-                  <div className="grid grid-cols-4 gap-2 text-center py-2 bg-zinc-900/30 rounded-lg border border-zinc-900/60">
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-500 block uppercase">Views</span>
-                      <span className="text-xs font-extrabold text-zinc-200">{post.views}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-500 block uppercase">Likes</span>
-                      <span className="text-xs font-extrabold text-zinc-200">{post.likes}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-500 block uppercase">Shares</span>
-                      <span className="text-xs font-extrabold text-zinc-200">{post.shares}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-500 block uppercase">Retenção</span>
-                      <span className="text-xs font-extrabold text-amber-500">{post.retention}</span>
-                    </div>
-                  </div>
-
-                  {/* IA Strategic Review */}
-                  <div className="p-3 bg-zinc-900/40 rounded-lg border border-zinc-900 text-xs text-zinc-400 leading-relaxed flex gap-2">
-                    <BrainCircuit className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" />
-                    <p><strong>Feedback Estratégico:</strong> {post.review}</p>
-                  </div>
+            {/* The Virality Recipe Box */}
+            <div className="bg-gradient-to-br from-amber-500/10 via-orange-600/5 to-transparent border border-amber-500/20 p-6 rounded-2xl space-y-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Zap className="h-5 w-5 text-amber-500 animate-pulse" /> A Receita do Viral (Fórmula Algorítmica)
+              </h3>
+              
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                O algoritmo recompensa principalmente a **Taxa de Retenção** (usuários assistindo até o fim e repetindo o vídeo) e o **Engajamento Ativo** (comentários e compartilhamentos). Aqui está o segredo validado para o seu nicho:
+              </p>
+ 
+              <div className="space-y-4 text-xs pt-2">
+                <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
+                  <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">1. Gancho Emocional</span>
+                  <p className="text-zinc-400 leading-normal">Ganchos de <strong>medo de prejuízo</strong> ou <strong>curiosidade imediata</strong> dobram a retenção dos primeiros 3s.</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* The Virality Recipe Box */}
-          <div className="bg-gradient-to-br from-amber-500/10 via-orange-600/5 to-transparent border border-amber-500/20 p-6 rounded-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Zap className="h-5 w-5 text-amber-500 animate-pulse" /> A Receita do Viral (Fórmula Algorítmica)
-            </h3>
-            
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              O algoritmo do Reels recompensa principalmente a **Taxa de Retenção** (usuários assistindo até o fim e repetindo o vídeo) e o **Engajamento Ativo** (comentários e compartilhamentos). Aqui está o segredo validado para o seu canal:
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-4 text-xs pt-2">
-              <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
-                <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">1. Gancho Emocional</span>
-                <p className="text-zinc-400 leading-normal">Ganchos de <strong>medo de prejuízo</strong> ou <strong>curiosidade imediata</strong> dobram a retenção dos primeiros 3s.</p>
-              </div>
-
-              <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
-                <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">2. Ritmo UGC</span>
-                <p className="text-zinc-400 leading-normal">Cortes visuais a cada 1.5s, legendas coloridas destacando palavras fortes e tom acelerado.</p>
-              </div>
-
-              <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
-                <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">3. Loop de Comentários</span>
-                <p className="text-zinc-400 leading-normal">Finalize mandatoriamente com CTAs do tipo <strong>"Comente SOLAR"</strong>. O algoritmo ama comentários!</p>
+ 
+                <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
+                  <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">2. Ritmo UGC</span>
+                  <p className="text-zinc-400 leading-normal">Cortes visuais a cada 1.5s, legendas coloridas destacando palavras fortes e tom acelerado.</p>
+                </div>
+ 
+                <div className="p-3.5 bg-zinc-950/80 border border-zinc-900 rounded-xl space-y-1">
+                  <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block">3. Loop de Comentários</span>
+                  <p className="text-zinc-400 leading-normal">Finalize mandatoriamente com CTAs do tipo <strong>"Comente SOLAR"</strong>. O algoritmo ama comentários!</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Right Side: Chat with Agent (2 cols) */}
-        <div className="lg:col-span-2 flex flex-col bg-zinc-900/30 border border-zinc-800/80 rounded-2xl overflow-hidden h-[630px]">
+ 
+          {/* Right Side: Chat with Agent (3 cols) */}
+          <div className="lg:col-span-3 flex flex-col bg-zinc-900/30 border border-zinc-800/80 rounded-2xl overflow-hidden h-[630px]">
           {/* Chat Header */}
           <div className="p-4 bg-zinc-950 border-b border-zinc-800/60 flex items-center justify-between">
             <div className="flex items-center gap-2.5">

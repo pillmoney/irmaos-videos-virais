@@ -232,227 +232,137 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Grid: Projects Left, Live Instagram Widget Right */}
-      <div className="grid lg:grid-cols-3 gap-8 items-start">
-        {/* Left 2/3: Projects search, filter and list */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Filter and Search */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-zinc-900/20 border border-zinc-800/60 p-4 rounded-2xl">
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-3.5 h-4 w-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Buscar projetos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800/80 focus:border-amber-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition-colors"
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 self-end sm:self-center">
-              {['todos', 'pendente', 'aguardando_aprovacao', 'publicado'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all duration-150 ${
-                    statusFilter === status
-                      ? 'bg-amber-500 text-zinc-950'
-                      : 'bg-zinc-900/60 hover:bg-zinc-900 hover:text-zinc-200 text-zinc-400'
-                  }`}
-                >
-                  {status === 'todos' ? 'Todos' : status === 'aguardando_aprovacao' ? 'Revisão' : status}
-                </button>
-              ))}
-            </div>
+      {/* Projects List */}
+      <div className="space-y-6">
+        {/* Filter and Search */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-zinc-900/20 border border-zinc-800/60 p-4 rounded-2xl">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-3.5 h-4 w-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Buscar projetos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800/80 focus:border-amber-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition-colors"
+            />
           </div>
 
-          {/* Project Grid/List */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm text-zinc-500 font-semibold">Carregando projetos...</span>
-            </div>
-          ) : filteredProjetos.length === 0 ? (
-            <div className="text-center py-20 bg-zinc-900/10 border border-dashed border-zinc-800/80 rounded-3xl col-span-2">
-              <div className="inline-flex p-4 bg-zinc-900/60 rounded-full text-zinc-500 mb-4">
-                <Video className="h-8 w-8" />
-              </div>
-              <h3 className="text-lg font-bold text-white">Nenhum projeto encontrado</h3>
-              <p className="text-zinc-500 text-sm mt-1 max-w-sm mx-auto">
-                {searchTerm || statusFilter !== 'todos'
-                  ? 'Tente ajustar seus termos de busca ou filtros de status.'
-                  : 'Adicione seu primeiro link de vídeo para começar a criar react com avatar.'}
-              </p>
-              {!searchTerm && statusFilter === 'todos' && (
-                <Link
-                  href="/novo-projeto"
-                  className="inline-flex items-center gap-2 mt-6 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-amber-500 hover:text-amber-400 border border-zinc-800 rounded-xl text-sm font-semibold transition-colors"
-                >
-                  Criar Projeto
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-6">
-              {filteredProjetos.map((projeto) => (
-                <div
-                  key={projeto.id}
-                  className="bg-zinc-900/30 border border-zinc-800/80 hover:border-zinc-700/60 p-6 rounded-2xl flex flex-col justify-between gap-6 hover:shadow-[0_4px_30px_rgba(0,0,0,0.2)] transition-all duration-200 group"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      {getStatusBadge(projeto.status)}
-                      <span className="text-[11px] font-semibold text-zinc-500">
-                        {new Date(projeto.created_at).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white group-hover:text-amber-500 transition-colors duration-150 leading-snug">
-                        {projeto.nome}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-zinc-800/60 pt-4 mt-2">
-                    <button
-                      onClick={(e) => handleDelete(projeto.id, e)}
-                      className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-                      title="Excluir Projeto"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-
-                    <div className="flex gap-2">
-                      {projeto.status === 'pendente' && (
-                        <Link
-                          href={`/novo-projeto?id=${projeto.id}`}
-                          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-xs font-bold border border-zinc-800 transition-colors"
-                        >
-                          Processar Vídeo <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      )}
-                      {projeto.status === 'aguardando_aprovacao' && (
-                        <Link
-                          href={`/roteiro?id=${projeto.id}`}
-                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold rounded-lg text-xs transition-colors shadow-lg shadow-amber-500/10"
-                        >
-                          Revisar Roteiro <FileText className="h-3.5 w-3.5" />
-                        </Link>
-                      )}
-                      {projeto.status === 'concluido' && (
-                        <Link
-                          href={`/estudio?id=${projeto.id}`}
-                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-lg text-xs transition-colors"
-                        >
-                          Ver Estúdio <Tv className="h-3.5 w-3.5" />
-                        </Link>
-                      )}
-                      {projeto.status === 'publicado' && (
-                        <Link
-                          href={`/estudio?id=${projeto.id}`}
-                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold rounded-lg text-xs transition-colors"
-                        >
-                          Ver Publicação <Instagram className="h-3.5 w-3.5" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right 1/3: Instagram Real-time Widget */}
-        <div className="space-y-6">
-          <div className="bg-zinc-900/30 border border-zinc-800/80 p-6 rounded-3xl space-y-6">
-            {/* Profile Header */}
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <div className="w-16 h-16 rounded-full p-[2.5px] bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-600">
-                  <div className="w-full h-full rounded-full border-2 border-zinc-950 bg-zinc-950 overflow-hidden flex items-center justify-center">
-                    <span className="font-extrabold text-amber-500 text-lg">IO</span>
-                  </div>
-                </div>
-                <div className="absolute -bottom-1 -right-1 bg-amber-500 text-zinc-950 p-1 rounded-full border-2 border-zinc-950 flex items-center justify-center">
-                  <Check className="h-2.5 w-2.5 stroke-[3]" />
-                </div>
-              </div>
-              <div>
-                <a 
-                  href="https://www.instagram.com/irmaosnaobra__/" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="font-extrabold text-white hover:text-amber-500 transition-colors text-base flex items-center gap-1.5"
-                >
-                  @irmaosnaobra__ <ArrowUpRight className="h-4 w-4 text-zinc-500" />
-                </a>
-                <p className="text-zinc-500 text-[11px] mt-0.5">Irmãos na Obra • Canal Oficial</p>
-              </div>
-            </div>
-
-            {/* Live Metrics Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-900 text-center">
-                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Seguidores</div>
-                <div className="text-lg font-extrabold text-white mt-0.5">142.5K</div>
-                <span className="text-[9px] font-bold text-emerald-400 mt-0.5 block">+1.2K hoje</span>
-              </div>
-              <div className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-900 text-center">
-                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Engajamento</div>
-                <div className="text-lg font-extrabold text-white mt-0.5">5.82%</div>
-                <span className="text-[9px] font-bold text-amber-400 mt-0.5 block">Nível: Excelente</span>
-              </div>
-              <div className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-900 text-center">
-                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Alcance</div>
-                <div className="text-lg font-extrabold text-white mt-0.5">1.8M</div>
-                <span className="text-[9px] font-bold text-zinc-500 mt-0.5 block">Últimos 30 dias</span>
-              </div>
-              <div className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-900 text-center">
-                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Publicações</div>
-                <div className="text-lg font-extrabold text-white mt-0.5">348</div>
-                <span className="text-[9px] font-bold text-zinc-500 mt-0.5 block">Última há 4h</span>
-              </div>
-            </div>
-
-            {/* Live Feed simulation */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Reels em Destaque</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live Sync"></span>
-              </h4>
-
-              <div className="space-y-2.5">
-                {[
-                  { title: "Gambiarra elétrica na fiação do disjuntor 🔌💥", views: "2.1M", likes: "184K" },
-                  { title: "Nunca apoie a escada no cano de PVC! 🚨🧱", views: "940K", likes: "82K" },
-                  { title: "O dia que o cliente lavou o painel solar quente ☀️💦", views: "1.5M", likes: "142K" }
-                ].map((feed, idx) => (
-                  <div key={idx} className="bg-zinc-950/40 border border-zinc-900/60 hover:border-zinc-800 p-3 rounded-xl flex items-center justify-between gap-3 transition-colors">
-                    <div className="space-y-1 min-w-0">
-                      <p className="text-xs font-bold text-zinc-200 truncate leading-snug">{feed.title}</p>
-                      <div className="flex gap-3 text-[10px] text-zinc-500 font-semibold">
-                        <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {feed.views}</span>
-                        <span className="flex items-center gap-1"><Heart className="h-3 w-3" /> {feed.likes}</span>
-                      </div>
-                    </div>
-                    <Link
-                      href="/descobridor"
-                      className="bg-zinc-900 hover:bg-amber-500 text-zinc-400 hover:text-zinc-950 p-1.5 rounded-lg border border-zinc-850 hover:border-amber-400/20 transition-all shrink-0"
-                      title="Ver no Descobridor"
-                    >
-                      <TrendingUp className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="flex items-center gap-1.5 self-end sm:self-center">
+            {['todos', 'pendente', 'aguardando_aprovacao', 'publicado'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all duration-150 ${
+                  statusFilter === status
+                    ? 'bg-amber-500 text-zinc-950'
+                    : 'bg-zinc-900/60 hover:bg-zinc-900 hover:text-zinc-200 text-zinc-400'
+                }`}
+              >
+                {status === 'todos' ? 'Todos' : status === 'aguardando_aprovacao' ? 'Revisão' : status}
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Project Grid/List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm text-zinc-500 font-semibold">Carregando projetos...</span>
+          </div>
+        ) : filteredProjetos.length === 0 ? (
+          <div className="text-center py-20 bg-zinc-900/10 border border-dashed border-zinc-800/80 rounded-3xl col-span-2">
+            <div className="inline-flex p-4 bg-zinc-900/60 rounded-full text-zinc-500 mb-4">
+              <Video className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Nenhum projeto encontrado</h3>
+            <p className="text-zinc-500 text-sm mt-1 max-w-sm mx-auto">
+              {searchTerm || statusFilter !== 'todos'
+                ? 'Tente ajustar seus termos de busca ou filtros de status.'
+                : 'Adicione seu primeiro link de vídeo para começar a criar react com avatar.'}
+            </p>
+            {!searchTerm && statusFilter === 'todos' && (
+              <Link
+                href="/novo-projeto"
+                className="inline-flex items-center gap-2 mt-6 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-amber-500 hover:text-amber-400 border border-zinc-800 rounded-xl text-sm font-semibold transition-colors"
+              >
+                Criar Projeto
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjetos.map((projeto) => (
+              <div
+                key={projeto.id}
+                className="bg-zinc-900/30 border border-zinc-800/80 hover:border-zinc-700/60 p-6 rounded-2xl flex flex-col justify-between gap-6 hover:shadow-[0_4px_30px_rgba(0,0,0,0.2)] transition-all duration-200 group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    {getStatusBadge(projeto.status)}
+                    <span className="text-[11px] font-semibold text-zinc-500">
+                      {new Date(projeto.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white group-hover:text-amber-500 transition-colors duration-150 leading-snug">
+                      {projeto.nome}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-zinc-800/60 pt-4 mt-2">
+                  <button
+                    onClick={(e) => handleDelete(projeto.id, e)}
+                    className="p-2 text-zinc-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                    title="Excluir Projeto"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="flex gap-2">
+                    {projeto.status === 'pendente' && (
+                      <Link
+                        href={`/novo-projeto?id=${projeto.id}`}
+                        className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-xs font-bold border border-zinc-800 transition-colors"
+                      >
+                        Processar Vídeo <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    )}
+                    {projeto.status === 'aguardando_aprovacao' && (
+                      <Link
+                        href={`/roteiro?id=${projeto.id}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold rounded-lg text-xs transition-colors shadow-lg shadow-amber-500/10"
+                      >
+                        Revisar Roteiro <FileText className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                    {projeto.status === 'concluido' && (
+                      <Link
+                        href={`/estudio?id=${projeto.id}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-lg text-xs transition-colors"
+                      >
+                        Ver Estúdio <Tv className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                    {projeto.status === 'publicado' && (
+                      <Link
+                        href={`/estudio?id=${projeto.id}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold rounded-lg text-xs transition-colors"
+                      >
+                        Ver Estúdio <Tv className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
