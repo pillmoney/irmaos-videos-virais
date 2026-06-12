@@ -442,14 +442,72 @@ export default function ModelandoFormatosVirais() {
   };
 
   // Create project from variation
-  const handleCreateProject = async (variation: Variation) => {
+  const handleCreateProject = async (variation: Variation, sourceUrl?: string) => {
     try {
       setCreatingProject(variation.id);
       const status = variation.totalScore >= 95 ? 'pendente' : 'aguardando_aprovacao';
+      
+      // 1. Create project
       const project = await db.projetos.create(
         `Modelagem Viral #${variation.index} — Score ${variation.totalScore}`,
         'D'
       );
+
+      // 2. Create videos_fonte record
+      const vf = await db.videos_fonte.create(
+        project.id,
+        sourceUrl || 'https://www.tiktok.com/source',
+        'tiktok',
+        30,
+        { processed_url: '' }
+      );
+
+      // 3. Create trecho record
+      const trecho = await db.trechos.create(
+        vf.id,
+        0,
+        30000,
+        variation.totalScore,
+        'Detectado via Modelagem Viral',
+        variation.caption
+      );
+      // Approve the trecho so it is selected by default in roteiro and estudio
+      await db.trechos.update(trecho.id, { aprovado: true });
+
+      // 4. Create roteiro record
+      const sentences = variation.caption.split(/[.!?]/).filter(s => s.trim().length > 0);
+      const gancho = sentences[0]?.trim() || variation.caption;
+      const cta = sentences[sentences.length - 1]?.trim() || '';
+      const corpo = sentences.slice(1, sentences.length - 1).join('. ').trim() || sentences[1]?.trim() || '';
+      const falar = variation.caption;
+
+      const roteiro = await db.roteiros.create(
+        trecho.id,
+        'Modelagem Viral',
+        gancho,
+        corpo,
+        cta,
+        falar,
+        [gancho, 'Gancho alternativo 1', 'Gancho alternativo 2']
+      );
+      // Approve the roteiro
+      await db.roteiros.update(roteiro.id, { aprovado: true });
+
+      // 5. Create viral score record
+      const scoreData = {
+        score_total: variation.totalScore,
+        hook: variation.scores.find(s => s.key === 'gancho')?.value || 90,
+        estrutura: variation.scores.find(s => s.key === 'originalidade')?.value || 90,
+        retencao: variation.scores.find(s => s.key === 'retencao')?.value || 90,
+        quebra_padrao: variation.scores.find(s => s.key === 'sincronia')?.value || 90,
+        similaridade: variation.scores.find(s => s.key === 'legibilidade')?.value || 90,
+        cta: variation.scores.find(s => s.key === 'cta')?.value || 90,
+        aderencia: variation.scores.find(s => s.key === 'aderencia')?.value || 90,
+        motivo: `Aprovado via Modelagem Viral com pontuação total de ${variation.totalScore}.`
+      };
+      await db.viral_scores.create(roteiro.id, scoreData);
+
+      // 6. Update project status
       await db.projetos.update(project.id, { status });
 
       // Update variation state
@@ -921,7 +979,7 @@ export default function ModelandoFormatosVirais() {
                       </button>
                     </div>
                     <button
-                      onClick={() => handleCreateProject(variation)}
+                      onClick={() => handleCreateProject(variation, job.sourceUrl)}
                       disabled={!!variation.projectId || creatingProject === variation.id}
                       className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-bold transition-all duration-200 hover:scale-[1.02] ${
                         variation.projectId

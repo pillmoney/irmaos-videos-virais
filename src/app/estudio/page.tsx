@@ -265,7 +265,7 @@ function EstudioContent() {
       setProject(proj);
 
       // Set default renderMode based on project's modulo_codigo
-      if (proj.modulo_codigo === 'A' || proj.modulo_codigo === 'C') {
+      if (proj.modulo_codigo === 'A' || proj.modulo_codigo === 'C' || proj.modulo_codigo === 'D') {
         setRenderMode('heygen_avatar');
       } else {
         setRenderMode('ugc_voice');

@@ -47,6 +47,7 @@ interface Projeto {
   id: string;
   nome: string;
   status: string;
+  modulo_codigo?: string;
   created_at: string;
 }
 
@@ -326,12 +327,21 @@ export default function Dashboard() {
 
                   <div className="flex gap-2">
                     {projeto.status === 'pendente' && (
-                      <Link
-                        href={`/novo-projeto?id=${projeto.id}`}
-                        className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-xs font-bold border border-zinc-800 transition-colors"
-                      >
-                        Processar Vídeo <ArrowRight className="h-3 w-3" />
-                      </Link>
+                      projeto.modulo_codigo === 'D' ? (
+                        <Link
+                          href={`/estudio?id=${projeto.id}`}
+                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-lg text-xs transition-colors"
+                        >
+                          Ver Estúdio <Tv className="h-3.5 w-3.5" />
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/novo-projeto?id=${projeto.id}`}
+                          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-xs font-bold border border-zinc-800 transition-colors"
+                        >
+                          Processar Vídeo <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      )
                     )}
                     {projeto.status === 'aguardando_aprovacao' && (
                       <Link
