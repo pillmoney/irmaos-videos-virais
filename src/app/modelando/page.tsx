@@ -1178,11 +1178,23 @@ Retorne estritamente o JSON válido, sem qualquer texto introdutório ou markdow
                       </button>
                     </div>
                     <button
-                      onClick={() => handleCreateProject(variation, job.sourceUrl)}
-                      disabled={!!variation.projectId || creatingProject === variation.id}
+                      onClick={() => {
+                        if (variation.projectId) {
+                          if (variation.totalScore >= 95) {
+                            router.push(`/estudio?id=${variation.projectId}`);
+                          } else {
+                            router.push(`/roteiro?id=${variation.projectId}`);
+                          }
+                        } else {
+                          handleCreateProject(variation, job.sourceUrl);
+                        }
+                      }}
+                      disabled={creatingProject === variation.id}
                       className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-bold transition-all duration-200 hover:scale-[1.02] ${
                         variation.projectId
-                          ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default'
+                          ? variation.totalScore >= 95
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/10'
+                            : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/10'
                           : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-500/10'
                       } disabled:opacity-60 disabled:pointer-events-none`}
                     >
@@ -1192,12 +1204,18 @@ Retorne estritamente o JSON válido, sem qualquer texto introdutório ou markdow
                           Criando...
                         </>
                       ) : variation.projectId ? (
-                        <>
-                          <CheckCircle className="h-3.5 w-3.5" /> Projeto Criado
-                        </>
+                        variation.totalScore >= 95 ? (
+                          <>
+                            <Sparkles className="h-3.5 w-3.5" /> Ir para Estúdio UGC 🚀
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-3.5 w-3.5" /> Ir para Revisar Roteiro 📝
+                          </>
+                        )
                       ) : (
                         <>
-                          <ArrowRight className="h-3.5 w-3.5" /> Criar Projeto
+                          <ArrowRight className="h-3.5 w-3.5" /> Criar Projeto no Pipeline
                         </>
                       )}
                     </button>
